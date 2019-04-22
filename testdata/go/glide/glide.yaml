@@ -1,0 +1,5 @@
+package: glide
+import:
+- package: github.com/ZiCog/shiny-thing
+  subpackages:
+  - foo

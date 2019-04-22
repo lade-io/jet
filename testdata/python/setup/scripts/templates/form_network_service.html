@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<body>
+    <h1>Enter two numbers a and b.</h1>
+    <form action="." method="POST">
+        a=<input type="text" name="A">
+        b=<input type="text" name="B">
+        <input type="submit" name="my-form" value="Send">
+    <h2>Will return the prediction of the neural network</h2>
+    <h3>Explanation</h3>    
+    <p>
+        We trained a small and simple neural network on triplets of the fibonacci sequence. <br>
+        The network was trained to predict the third number based on the first two numbers. <br>
+        Based on this information, the network approximates 'addition'. <br>
+        This is because each numbers in the fibonacci sequence is the sum of the two previous numbers. <br>
+        Due to the nature of the fibonacci sequence, which only contains positive numbers, <br>
+        the model only handles positive numbers. It has never seen a negative number, so it <br>
+        avoids predicting it. <br>
+    </p>
+    </form>
+</body>
+</html>

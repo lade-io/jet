@@ -1,0 +1,10 @@
+{
+	"ImportPath": "godep",
+	"GoVersion": "go1.X",
+	"Deps": [
+		{
+			"ImportPath": "github.com/ZiCog/shiny-thing/foo",
+			"Rev": "e9e19444ccf5362bba846441c4700a49a94b8118"
+		}
+	]
+}
