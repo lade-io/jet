@@ -1,17 +1,16 @@
 {
-  "name": "@sample/sample-monorepo-app",
-  "repository": "git@github.com:giedrioks/sample-monorepo.git",
-  "main": "packages/sample-app/index.js",
+  "name": "node_web_app",
+  "version": "0.0.0",
+  "description": "hello, world",
+  "main": "server.js",
   "scripts": {
-    "start": "node packages/sample-app/index.js",
-    "start:app": "cd packages/sample-app && exec npm start"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "private": true,
-  "engines": {
-    "node": "8.x",
-    "yarn": "1.x"
+  "author": "",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "logfmt": "~1.1.2",
+    "express": "~4.0.0"
   },
-  "workspaces": [
-    "packages/*"
-  ]
+  "engines" : { "node" : "~>8" }
 }

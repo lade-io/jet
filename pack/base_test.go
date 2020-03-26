@@ -98,10 +98,10 @@ func TestBuild(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if resp.StatusCode == 500 {
-				return errors.New(resp.Status)
+			if resp.StatusCode == 200 || resp.StatusCode == 404 {
+				return nil
 			}
-			return nil
+			return errors.New(resp.Status)
 		})
 		assert.NoError(t, err)
 		assert.NoError(t, testPool.Purge(resource))

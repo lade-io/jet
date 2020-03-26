@@ -20,7 +20,24 @@ func (p *PythonPack) Detect() bool {
 }
 
 func (p *PythonPack) Metadata() *Metadata {
-	meta := &Metadata{}
+	user := "web"
+	meta := &Metadata{
+		Env: map[string]string{
+			"PATH":     "/home/" + user + "/.local/bin:$PATH",
+			"PIP_USER": "true",
+		},
+		User: user,
+	}
+	requirements := p.requirements()
+	if !requirements["gunicorn"] {
+		meta.Tools = append(meta.Tools, &Tool{
+			Name:    "pip",
+			Install: []string{"install gunicorn"},
+		})
+	}
+	if requirements["pylibmc"] {
+		meta.Packages = append(meta.Packages, "libmemcached-dev")
+	}
 	switch {
 	case fileExists(p.WorkDir, "requirements.txt"):
 	case fileExists(p.WorkDir, "setup.py"):
@@ -54,16 +71,6 @@ func (p *PythonPack) Metadata() *Metadata {
 		Files:   []string{"requirements.txt"},
 		Install: []string{"install -r requirements.txt"},
 	})
-
-	requirements := p.requirements()
-	if !requirements["gunicorn"] {
-		meta.Depends = append(meta.Depends, &Depend{
-			Args: []string{"pip install gunicorn"},
-		})
-	}
-	if requirements["pylibmc"] {
-		meta.Packages = append(meta.Packages, "libmemcached-dev")
-	}
 	return meta
 }
 
@@ -110,8 +117,9 @@ func (p *PythonPack) Version() (string, error) {
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			line := scanner.Text()
-			if pythonRegex.MatchString(line) {
-				return versionRegex.FindString(line), nil
+			matches := pythonRegex.FindStringSubmatch(line)
+			if len(matches) > 2 {
+				return matches[2], nil
 			}
 		}
 	}
@@ -144,5 +152,5 @@ func (p *PythonPack) requirements() map[string]bool {
 var (
 	pipRegex    = regexp.MustCompile(`(?:^|[-'"])\s*([a-zA-Z_][-\w]*)\s*(?:$|[=<>'"[])`)
 	pyappRegex  = regexp.MustCompile(`(\w+)\s*=\s*[\w.]*(Flask|get_wsgi_application)\(`)
-	pythonRegex = regexp.MustCompile(`^-?\s*python(_version)?[-=.x*\d'"]+$`)
+	pythonRegex = regexp.MustCompile(`^-?\s*python(_version)?[-=\s'"]*([.x*\d]+)['"]?$`)
 )

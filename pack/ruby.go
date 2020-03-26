@@ -17,19 +17,22 @@ func (r *RubyPack) Detect() bool {
 }
 
 func (r *RubyPack) Metadata() *Metadata {
-	meta := &Metadata{}
+	meta := &Metadata{
+		User: "web",
+	}
+	specs := r.specs()
+	if _, ok := specs["puma"]; !ok {
+		meta.Tools = append(meta.Tools, &Tool{
+			Name:    "gem",
+			Install: []string{"install puma"},
+		})
+	}
+
 	meta.Tools = append(meta.Tools, &Tool{
 		Name:    "bundle",
 		Files:   []string{"Gemfile", "Gemfile.lock"},
 		Install: []string{"install"},
 	})
-
-	specs := r.specs()
-	if _, ok := specs["puma"]; !ok {
-		meta.Depends = append(meta.Depends, &Depend{
-			Args: []string{"gem install puma"},
-		})
-	}
 
 	yarn := fileExists(r.WorkDir, "yarn.lock")
 	node := yarn

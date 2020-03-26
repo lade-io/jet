@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"text/template"
 
 	"github.com/docker/libcompose/docker/builder"
 	"github.com/docker/libcompose/docker/client"
@@ -67,6 +68,7 @@ type Tool struct {
 	Download string
 	Files    []string
 	Install  []string
+	Hook     func(meta *Metadata, tool *Tool) error
 }
 
 func Detect(workDir string) (pack *Buildpack, err error) {
@@ -111,12 +113,12 @@ func Detect(workDir string) (pack *Buildpack, err error) {
 		return nil, err
 	}
 
-	err = getTools(workDir, pack.Metadata)
+	err = getVersion(pack.Metadata)
 	if err != nil {
 		return nil, err
 	}
 
-	err = getVersion(pack.Metadata)
+	err = getTools(workDir, pack.Metadata)
 	return
 }
 
@@ -211,12 +213,15 @@ func (b *Buildpack) createDockerignore() error {
 	return w.Flush()
 }
 
+var (
+	dockerTemplate = template.Must(template.New("Dockerfile").Parse(dockerString))
+	imageRegex     = regexp.MustCompile(`^ ---> ([0-9a-f]+)\s*$`)
+)
+
 type buildLogger struct {
 	logger.RawLogger
 	imageID string
 }
-
-var imageRegex = regexp.MustCompile(`^ ---> ([0-9a-f]+)\s*$`)
 
 func (b *buildLogger) Out(message []byte) {
 	msg := string(message)

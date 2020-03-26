@@ -1,5 +1,9 @@
 package pack
 
+import (
+	"github.com/cloudingcity/gomod"
+)
+
 type GoPack struct {
 	WorkDir string
 }
@@ -15,6 +19,7 @@ func (g *GoPack) Detect() bool {
 func (g *GoPack) Metadata() *Metadata {
 	meta := &Metadata{
 		Install: []string{"go install -v -ldflags '-s -w' ."},
+		User:    "web",
 	}
 	switch {
 	case fileExists(g.WorkDir, "Gopkg.toml"):
@@ -81,5 +86,17 @@ func (g *GoPack) Command() (string, error) {
 }
 
 func (g *GoPack) Version() (string, error) {
+	if fileExists(g.WorkDir, "go.mod") {
+		b, err := fileRead(g.WorkDir, "go.mod")
+		if err != nil {
+			return "", err
+		}
+
+		mod, err := gomod.Parse(b)
+		if err != nil {
+			return "", err
+		}
+		return mod.Go, nil
+	}
 	return "", nil
 }

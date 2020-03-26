@@ -3,6 +3,8 @@ package pack
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/hashicorp/go-version"
 )
 
 type NodePack struct {
@@ -14,7 +16,9 @@ func (n *NodePack) Detect() bool {
 }
 
 func (n *NodePack) Metadata() *Metadata {
-	meta := &Metadata{}
+	meta := &Metadata{
+		User: "node",
+	}
 	if fileExists(n.WorkDir, "yarn.lock") {
 		meta.Packages = append(meta.Packages, "yarn")
 		meta.Sources = append(meta.Sources, &Source{
@@ -32,6 +36,22 @@ func (n *NodePack) Metadata() *Metadata {
 			Name:    "npm",
 			Files:   []string{"package.json", "package-lock.json"},
 			Install: []string{"install"},
+			Hook: func(meta *Metadata, tool *Tool) error {
+				if !fileExists(n.WorkDir, "package-lock.json") {
+					return nil
+				}
+
+				constraints, err := version.NewConstraint("^8.12 || >=10.3")
+				if err != nil {
+					return err
+				}
+
+				v, _ := version.NewVersion(meta.Version)
+				if constraints.Check(v) {
+					tool.Install = []string{"ci"}
+				}
+				return nil
+			},
 		})
 	}
 	return meta

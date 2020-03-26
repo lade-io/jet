@@ -2,12 +2,30 @@
 
 ![Jet mascot](https://static.lade.io/jet-mascot.png)
 
-[![Build Status](https://img.shields.io/travis/com/lade-io/jet.svg)](https://travis-ci.com/lade-io/jet)
+[![Build Status](https://travis-ci.com/lade-io/jet.svg?branch=master)](https://travis-ci.com/lade-io/jet)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4.svg)](https://godoc.org/github.com/lade-io/jet/pack)
-[![Release](https://img.shields.io/github/release/lade-io/jet.svg)](https://github.com/lade-io/jet/releases/latest)
+[![Release](https://img.shields.io/github/v/release/lade-io/jet.svg)](https://github.com/lade-io/jet/releases/latest)
 
 Jet is a tool to convert source code into Docker images. Jet inspects your source code to
 create a Dockerfile with caching layers and any required system dependencies.
+
+## Language Support
+
+Jet will detect your app from the following languages and package managers:
+
+* [Go](https://golang.org) - [dep](https://github.com/golang/dep), [glide](https://glide.sh), [godep](https://github.com/tools/godep), [go modules](https://github.com/golang/go/wiki/Modules), [govendor](https://github.com/kardianos/govendor)
+* [Node.js](https://nodejs.org) - [npm](https://www.npmjs.com), [yarn](https://yarnpkg.com)
+* [PHP](https://www.php.net) - [composer](https://getcomposer.org)
+* [Python](https://www.python.org) - [conda](https://docs.conda.io), [pip](https://pip.pypa.io), [pipenv](https://pipenv.pypa.io)
+* [Ruby](https://www.ruby-lang.org) - [bundler](https://bundler.io)
+
+## Comparison Table
+
+| Feature | Jet | [Cloud Native Buildpacks](https://buildpacks.io) | [Repo2docker](https://github.com/jupyter/repo2docker) | [Source-to-Image](https://github.com/openshift/source-to-image) |
+| --- | --- | --- | --- | --- |
+| Supported Languages | Go, Node.js, PHP, Python, Ruby | Java, Node.js | Python | Node.js, Perl, PHP, Python, Ruby |
+| Best Practices Dockerfile | :white_check_mark: | :x: | :white_check_mark: | :x: |
+| Hourly Runtime Updates | :white_check_mark: | :x: | :x: | :x: |
 
 ## Installation
 
@@ -41,30 +59,56 @@ go get github.com/lade-io/jet
 
 ## Examples
 
-Build Node app:
+Build Node.js app:
 
 ```sh
-$ jet build testdata/node/node10/ -n node-app
+$ jet build testdata/node/node12/ -n node-app
 $ docker run -p 5000:5000 node-app
 ```
 
-Debug Django app with Gunicorn:
+Debug Node.js app:
+
+```console
+$ jet debug testdata/node/node12/
+FROM node:12
+
+USER node
+RUN mkdir -p /home/node/app/
+WORKDIR /home/node/app/
+
+COPY --chown=node:node package.json package-lock.json ./
+RUN npm ci
+
+COPY --chown=node:node . ./
+
+CMD ["node", "server.js"]
+```
+
+Debug Python and Django app:
 
 ```console
 $ jet debug testdata/python/django/
 FROM python:3.5
 
-WORKDIR /app/
+ENV PATH=/home/web/.local/bin:$PATH
+ENV PIP_USER=true
 
-COPY requirements.txt /app/
+RUN groupadd --gid 1000 web \
+        && useradd --uid 1000 --gid web --shell /bin/bash --create-home web
+
+USER web
+RUN mkdir -p /home/web/app/
+WORKDIR /home/web/app/
+
+COPY --chown=web:web requirements.txt ./
 RUN pip install -r requirements.txt
 
-COPY . /app/
+COPY --chown=web:web . ./
 
 CMD ["gunicorn", "django_web_app.wsgi:application"]
 ```
 
-Debug Rails app with Yarn:
+Debug Ruby on Rails app:
 
 ```console
 $ jet debug testdata/ruby/rails5/
@@ -80,15 +124,20 @@ RUN set -ex \
                 yarn \
         && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app/
+RUN groupadd --gid 1000 web \
+        && useradd --uid 1000 --gid web --shell /bin/bash --create-home web
 
-COPY Gemfile Gemfile.lock /app/
+USER web
+RUN mkdir -p /home/web/app/
+WORKDIR /home/web/app/
+
+COPY --chown=web:web Gemfile Gemfile.lock ./
 RUN bundle install
 
-COPY package.json yarn.lock /app/
+COPY --chown=web:web package.json yarn.lock ./
 RUN yarn install
 
-COPY . /app/
+COPY --chown=web:web . ./
 
 CMD ["sh", "-c", "puma -p ${PORT-3000}"]
 ```

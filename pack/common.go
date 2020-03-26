@@ -11,26 +11,24 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/bmatcuk/doublestar"
-	"github.com/docker/distribution"
+	"github.com/cloudingcity/gomod"
 	"github.com/docker/distribution/reference"
-	"github.com/docker/docker/api/types"
-	dockerdist "github.com/docker/docker/distribution"
-	"github.com/docker/docker/registry"
+	"github.com/docker/distribution/registry/client"
 	"github.com/google/go-github/v24/github"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 	"github.com/hashicorp/go-version"
-	"gitlab.com/zamicol/goversion"
+	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v2"
 )
 
 var (
 	cacheExpiry = time.Hour
 	httpClient  *http.Client
+	transport   *cacheTransport
 )
 
 type cacheTransport struct {
@@ -38,29 +36,84 @@ type cacheTransport struct {
 	rt     http.RoundTripper
 }
 
-func (c *cacheTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (c *cacheTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	req.Header.Set("Cache-Control", fmt.Sprintf("max-age=%d", c.maxAge))
-	return c.rt.RoundTrip(req)
+	resp, err = c.rt.RoundTrip(req)
+	if resp.StatusCode != http.StatusOK {
+		resp.Header.Set("Cache-Control", "no-cache")
+	}
+	return
 }
 
 func init() {
 	cache := diskcache.New(filepath.Join(os.TempDir(), "jet-cache"))
-	transport := &cacheTransport{
+	transport = &cacheTransport{
 		maxAge: int(cacheExpiry / time.Second),
 		rt:     httpcache.NewTransport(cache),
 	}
-	httpClient = &http.Client{Transport: transport}
+	if accessToken, exists := os.LookupEnv("GITHUB_TOKEN"); exists {
+		token := &oauth2.Token{AccessToken: accessToken}
+		tokenSource := oauth2.StaticTokenSource(token)
+		httpClient = &http.Client{
+			Transport: &oauth2.Transport{
+				Base:   transport,
+				Source: tokenSource,
+			},
+		}
+	} else {
+		httpClient = &http.Client{Transport: transport}
+	}
+}
+
+func getDownload(tool *Tool) error {
+	name := tool.Name
+	owner := tool.Owner
+	if owner == "" {
+		return nil
+	}
+
+	client := github.NewClient(httpClient)
+	ctx := context.Background()
+	release, _, err := client.Repositories.GetLatestRelease(ctx, owner, name)
+	if err != nil {
+		return err
+	}
+
+	binary, err := regexp.Compile(name + `(.*linux[-_]amd64($|\.tar\.gz)|\.phar)`)
+	if err != nil {
+		return err
+	}
+
+	for _, asset := range release.Assets {
+		if binary.MatchString(asset.GetName()) {
+			tool.Download = asset.GetBrowserDownloadURL()
+			if strings.HasSuffix(tool.Download, ".tar.gz") {
+				tool.Archive = true
+			} else {
+				tool.Binary = true
+			}
+			break
+		}
+	}
+	if tool.Download == "" {
+		return fmt.Errorf("%s tool not found", name)
+	}
+	return nil
 }
 
 func getPath(dir string, meta *Metadata) error {
 	defer func() {
-		if meta.Path == "" || meta.Path == "." {
+		current := filepath.Clean(meta.Path) == "."
+		if current {
 			meta.Path = "/app"
 		}
 		if meta.Name == "golang" {
 			meta.Path = filepath.Join("/go/src", meta.Path)
 			meta.Command = filepath.Base(meta.Path)
+		} else if current {
+			meta.Path = filepath.Join("/home", meta.User, meta.Path)
 		}
+		meta.Path += "/"
 		getProcess(meta)
 	}()
 
@@ -86,7 +139,7 @@ func getPath(dir string, meta *Metadata) error {
 	case ".yaml":
 		err = yaml.Unmarshal(b, &conf)
 	case ".mod":
-		conf["module"] = goversion.ModulePath(b)
+		conf["module"], err = getModule(b)
 	}
 	if err != nil {
 		return err
@@ -98,6 +151,14 @@ func getPath(dir string, meta *Metadata) error {
 	return nil
 }
 
+func getModule(data []byte) (string, error) {
+	mod, err := gomod.Parse(data)
+	if err != nil {
+		return "", err
+	}
+	return mod.Module.Path, nil
+}
+
 func getProcess(meta *Metadata) {
 	if strings.Contains(meta.Command, "$") {
 		meta.Process = []string{"sh", "-c", meta.Command}
@@ -106,94 +167,40 @@ func getProcess(meta *Metadata) {
 	}
 }
 
+func getTags(name string) ([]string, error) {
+	namedRef, err := reference.WithName("library/" + name)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	repository, err := client.NewRepository(ctx, namedRef, "https://hub.lade.io", transport)
+	if err != nil {
+		return nil, err
+	}
+
+	return repository.Tags(ctx).All(ctx)
+}
+
 func getTools(dir string, meta *Metadata) error {
 	for _, tool := range meta.Tools {
+		if tool.Hook != nil {
+			if err := tool.Hook(meta, tool); err != nil {
+				return err
+			}
+		}
+
 		copy, err := fileCopy(dir, tool.Files)
 		if err != nil {
 			return err
 		}
 
 		tool.Copy = copy
-		name := tool.Name
-		owner := tool.Owner
-		if owner == "" {
-			continue
-		}
-
-		client := github.NewClient(httpClient)
-		ctx := context.Background()
-		release, _, err := client.Repositories.GetLatestRelease(ctx, owner, name)
-		if err != nil {
+		if err = getDownload(tool); err != nil {
 			return err
-		}
-
-		binary, err := regexp.Compile(name + `(.*linux[-_]amd64($|\.tar\.gz)|\.phar)`)
-		if err != nil {
-			return err
-		}
-
-		for _, asset := range release.Assets {
-			if binary.MatchString(asset.GetName()) {
-				tool.Download = asset.GetBrowserDownloadURL()
-				if strings.HasSuffix(tool.Download, ".tar.gz") {
-					tool.Archive = true
-				} else {
-					tool.Binary = true
-				}
-				break
-			}
-		}
-		if tool.Download == "" {
-			return fmt.Errorf("%s tool not found", name)
 		}
 	}
 	return nil
-}
-
-func getTags(name string) ([]string, error) {
-	ctx := context.Background()
-	authConfig := &types.AuthConfig{}
-
-	namedRef, err := reference.WithName("docker.io/library/" + name)
-	if err != nil {
-		return nil, err
-	}
-
-	registryService, err := registry.NewService(registry.ServiceOptions{V2Only: true})
-	if err != nil {
-		return nil, err
-	}
-
-	repoInfo, err := registryService.ResolveRepository(namedRef)
-	if err != nil {
-		return nil, err
-	}
-
-	endpoints, err := registryService.LookupPullEndpoints(reference.Domain(repoInfo.Name))
-	if err != nil {
-		return nil, err
-	}
-
-	var (
-		repository distribution.Repository
-		confirmV2  bool
-	)
-
-	for _, endpoint := range endpoints {
-		if endpoint.Version == registry.APIVersion1 {
-			continue
-		}
-
-		repository, confirmV2, err = dockerdist.NewV2Repository(ctx, repoInfo, endpoint, nil, authConfig, "pull")
-		if err == nil && confirmV2 {
-			break
-		}
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return repository.Tags(ctx).All(ctx)
 }
 
 func getVersion(meta *Metadata) error {
@@ -221,7 +228,7 @@ func getVersion(meta *Metadata) error {
 		return v1.GreaterThan(v2)
 	})
 
-	meta.Version = strings.TrimRight(meta.Version, ",.x*")
+	meta.Version = strings.TrimRight(meta.Version, ".x*")
 	if meta.Version == "" {
 		meta.Version = ">0"
 	}
@@ -258,10 +265,7 @@ func fileCopy(dir string, files []string) (map[string][]string, error) {
 
 	copy := map[string][]string{}
 	for _, path := range paths {
-		dest := filepath.Dir(path) + "/"
-		if dest == "./" {
-			dest = ""
-		}
+		dest := filepath.Dir(path)
 		copy[dest] = append(copy[dest], path)
 	}
 	return copy, nil
@@ -293,11 +297,6 @@ func fileRead(dir, file string) ([]byte, error) {
 	return ioutil.ReadFile(filepath.Join(dir, file))
 }
 
-var (
-	dockerTemplate = template.Must(template.New("Dockerfile").Parse(dockerString))
-	versionRegex   = regexp.MustCompilePOSIX(version.VersionRegexpRaw)
-)
-
 const dockerString = `FROM {{.Name}}:{{.Version}}
 {{if .Packages}}
 RUN set -ex \
@@ -321,17 +320,18 @@ RUN {{if $d.List}}{{$d.Name}}{{end}}{{range $i, $e := .Args}}{{if or $d.List $i}
 {{- $d.Name}} {{end}}{{$e}}{{end}}
 {{end}}{{if .Env}}
 {{range $key, $val := .Env}}ENV {{$key}}={{$val}}
-{{end}}{{end}}
-WORKDIR {{.Path}}/
-{{if .User}}
+{{end}}{{end}}{{if eq .User "web"}}
+RUN groupadd --gid 1000 {{.User}} \
+	&& useradd --uid 1000 --gid {{.User}} --shell /bin/bash --create-home {{.User}}
+{{end}}
 USER {{.User}}
-{{end}}{{range $t := .Tools}}{{range $dir, $files := .Copy}}
+RUN mkdir -p {{.Path}}
+WORKDIR {{.Path}}
+{{range $t := .Tools}}{{range $dir, $files := .Copy}}
 COPY {{if $.User}}--chown={{$.User}}:{{$.User}} {{end}}
-{{- range $files}}{{.}} {{end}}{{$.Path}}/{{$dir}}{{end}}{{if .Install}}
+{{- range $files}}{{.}} {{end}}{{$dir}}/{{end}}{{if .Install}}
 RUN {{range $i, $e := .Install}}{{if $i}} \
 	&& {{end}}{{if $t.Name}}{{$t.Name}} {{end}}{{$e}}{{end}}{{end}}
-{{end}}{{if .User}}
-USER root
 {{end}}{{if .Process}}
 CMD [{{range $i, $e := .Process}}{{if $i}}, {{end}}"{{$e}}"{{end}}]
 {{end -}}
