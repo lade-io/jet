@@ -174,7 +174,7 @@ func getTags(name string) ([]string, error) {
 	}
 
 	ctx := context.Background()
-	repository, err := client.NewRepository(ctx, namedRef, "https://hub.lade.io", transport)
+	repository, err := client.NewRepository(namedRef, "https://hub.lade.io", transport)
 	if err != nil {
 		return nil, err
 	}

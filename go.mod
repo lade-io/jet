@@ -11,10 +11,11 @@ require (
 	github.com/cloudingcity/gomod v1.0.1
 	github.com/containerd/continuity v0.0.0-20181203112020-004b46473808 // indirect
 	github.com/docker/cli v0.0.0-20171020201719-3352c0e137e8 // indirect
-	github.com/docker/distribution v0.0.0-20170623202848-a97d7c0c155b
+	github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker v0.0.0-20180221164450-0ede01237c9a // indirect
 	github.com/docker/docker-credential-helpers v0.5.3-0.20170816090621-3c90bd29a46b // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
+	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/docker/libcompose v0.4.1-0.20181019154650-213509acef0f
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
