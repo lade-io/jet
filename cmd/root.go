@@ -9,6 +9,9 @@ import (
 var RootCmd = &cobra.Command{
 	Use:   "jet",
 	Short: "Convert source code into Docker images",
+	CompletionOptions: cobra.CompletionOptions{
+		DisableDefaultCmd: true,
+	},
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		cmd.SilenceUsage = true
 	},

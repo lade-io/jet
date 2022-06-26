@@ -1,9 +1,9 @@
 # Jet
 
-![Jet mascot](https://static.lade.io/jet-mascot.png)
+![Jet mascot](jet-mascot.png)
 
-[![Build Status](https://travis-ci.com/lade-io/jet.svg?branch=master)](https://travis-ci.com/lade-io/jet)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4.svg)](https://godoc.org/github.com/lade-io/jet/pack)
+[![Build Status](https://img.shields.io/github/workflow/status/lade-io/jet/Release.svg)](https://github.com/lade-io/jet/actions/workflows/release.yml)
+[![Go.Dev Reference](https://img.shields.io/badge/go.dev-reference-blue.svg)](https://pkg.go.dev/github.com/lade-io/jet/pack)
 [![Release](https://img.shields.io/github/v/release/lade-io/jet.svg)](https://github.com/lade-io/jet/releases/latest)
 
 Jet is a tool to convert source code into Docker images. Jet inspects your source code to
@@ -13,7 +13,7 @@ create a Dockerfile with caching layers and any required system dependencies.
 
 Jet will detect your app from the following languages and package managers:
 
-* [Go](https://golang.org) - [dep](https://github.com/golang/dep), [glide](https://glide.sh), [godep](https://github.com/tools/godep), [go modules](https://github.com/golang/go/wiki/Modules), [govendor](https://github.com/kardianos/govendor)
+* [Go](https://golang.org) - [dep](https://github.com/golang/dep), [glide](https://github.com/Masterminds/glide), [godep](https://github.com/tools/godep), [go modules](https://github.com/golang/go/wiki/Modules), [govendor](https://github.com/kardianos/govendor)
 * [Node.js](https://nodejs.org) - [npm](https://www.npmjs.com), [yarn](https://yarnpkg.com)
 * [PHP](https://www.php.net) - [composer](https://getcomposer.org)
 * [Python](https://www.python.org) - [conda](https://docs.conda.io), [pip](https://pip.pypa.io), [pipenv](https://pipenv.pypa.io)
@@ -30,7 +30,7 @@ Jet will detect your app from the following languages and package managers:
 ## Installation
 
 Jet is supported on MacOS, Linux and Windows as a standalone binary.
-You can download the latest binary from the [releases page](https://github.com/lade-io/jet/releases) on Github.
+You can download the latest binary from the [releases page](https://github.com/lade-io/jet/releases) on GitHub.
 
 ### MacOS
 

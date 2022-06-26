@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/ake-persson/mapslice-json"
 )
 
 type PhpPack struct {
@@ -40,7 +42,7 @@ func (p *PhpPack) Metadata() *Metadata {
 	}
 
 	if fileExists(p.WorkDir, "composer.json") {
-		conf, core, make, pecl, pkgs := p.extensions()
+		conf, core, load, pecl, pkgs := p.extensions()
 		if len(conf) > 0 {
 			meta.Depends = append(meta.Depends, &Depend{
 				Name: "docker-php-ext-configure",
@@ -64,7 +66,7 @@ func (p *PhpPack) Metadata() *Metadata {
 			})
 			meta.Depends = append(meta.Depends, &Depend{
 				Name: "docker-php-ext-enable",
-				Args: make,
+				Args: load,
 				List: true,
 			})
 		}
@@ -75,7 +77,7 @@ func (p *PhpPack) Metadata() *Metadata {
 			Name:    "composer",
 			Owner:   "composer",
 			Files:   []string{"composer.json", "composer.lock"},
-			Install: []string{"install --no-dev"},
+			Install: []string{"install --no-dev --no-scripts"},
 		})
 	}
 	return meta
@@ -91,13 +93,14 @@ func (p *PhpPack) Command() (string, error) {
 
 func (p *PhpPack) Version() (string, error) {
 	requires := p.requires()
-	return "<7.4," + requires["php"], nil
+	version := phpPipe.Split(requires["php"], -1)
+	return strings.Join(version, "||"), nil
 }
 
 func (p *PhpPack) extensions() ([]string, []string, []string, []string, []string) {
 	requires := p.requires()
 	var exts []string
-	for require, _ := range requires {
+	for require := range requires {
 		ext := strings.TrimPrefix(require, "ext-")
 		if ext != require {
 			exts = append(exts, ext)
@@ -105,7 +108,7 @@ func (p *PhpPack) extensions() ([]string, []string, []string, []string, []string
 	}
 	sort.Strings(exts)
 
-	var conf, core, make, pecl, pkgs []string
+	var conf, core, load, pecl, pkgs []string
 	seen := map[string]bool{}
 	for _, ext := range exts {
 		var args []string
@@ -117,7 +120,7 @@ func (p *PhpPack) extensions() ([]string, []string, []string, []string, []string
 				conf = append(conf, ext)
 			}
 		} else if args, ok = phpPeclExts[ext]; ok {
-			make = append(make, ext)
+			load = append(load, ext)
 			if len(args) > 1 {
 				ext += "-" + args[1]
 			}
@@ -134,31 +137,71 @@ func (p *PhpPack) extensions() ([]string, []string, []string, []string, []string
 		}
 	}
 	sort.Strings(pkgs)
-	return conf, core, make, pecl, pkgs
+	return conf, core, load, pecl, pkgs
+}
+
+type composerLock struct {
+	Packages []composerPackage `json:"packages"`
+}
+
+type composerPackage struct {
+	Name    string            `json:"name"`
+	Require mapslice.MapSlice `json:"require"`
+}
+
+func composerRequire(name string, pkgs map[string]mapslice.MapSlice, requires map[string]string) {
+	for _, item := range pkgs[name] {
+		key, ok := item.Key.(string)
+		if !ok {
+			continue
+		}
+		value, ok := item.Value.(string)
+		if !ok {
+			continue
+		}
+		if version, ok := requires[key]; !ok {
+			requires[key] = value
+			composerRequire(key, pkgs, requires)
+		} else if !strings.Contains(version, value) {
+			requires[key] = version + "," + value
+		}
+	}
 }
 
 func (p *PhpPack) requires() map[string]string {
-	b, err := fileRead(p.WorkDir, "composer.json")
+	pkgs := map[string]mapslice.MapSlice{}
+	b, err := fileRead(p.WorkDir, "composer.lock")
+	if err == nil {
+		lock := composerLock{}
+		if err = json.Unmarshal(b, &lock); err == nil {
+			for _, pkg := range lock.Packages {
+				pkgs[pkg.Name] = pkg.Require
+			}
+		}
+	}
+
+	b, err = fileRead(p.WorkDir, "composer.json")
 	if err != nil {
 		return nil
 	}
 
-	conf := map[string]interface{}{}
+	conf := composerPackage{}
 	if err = json.Unmarshal(b, &conf); err != nil {
 		return nil
 	}
 
-	require, ok := conf["require"].(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
 	requires := map[string]string{}
-	for k, v := range require {
-		val, ok := v.(string)
-		if ok {
-			requires[k] = val
+	for _, item := range conf.Require {
+		key, ok := item.Key.(string)
+		if !ok {
+			continue
 		}
+		value, ok := item.Value.(string)
+		if !ok {
+			continue
+		}
+		requires[key] = value
+		composerRequire(key, pkgs, requires)
 	}
 	return requires
 }
@@ -197,7 +240,10 @@ func (p *PhpPack) webroot() string {
 	return filepath.Dir(paths[0])
 }
 
-var phpLayout = regexp.MustCompile(`^require.*index\.php`)
+var (
+	phpLayout = regexp.MustCompile(`^require.*index\.php`)
+	phpPipe   = regexp.MustCompile(`\|+`)
+)
 
 const (
 	phpImap = "--with-kerberos --with-imap-ssl"
@@ -208,7 +254,7 @@ var phpCoreExts = map[string][]string{
 	"bz2":          []string{"libbz2-dev"},
 	"curl":         []string{"libcurl4-openssl-dev"},
 	"dba":          []string{},
-	"enchant":      []string{"libenchant-dev"},
+	"enchant":      []string{"libenchant-*dev"},
 	"exif":         []string{},
 	"fileinfo":     []string{},
 	"ftp":          []string{"libssl-dev"},
@@ -216,9 +262,9 @@ var phpCoreExts = map[string][]string{
 	"gettext":      []string{},
 	"gmp":          []string{"libgmp-dev"},
 	"imap":         []string{"libc-client-dev,libkrb5-dev", phpImap},
-	"interbase":    []string{"firebird-dev"},
+	"intl":         []string{"libicu-dev"},
 	"ldap":         []string{"libldap2-dev"},
-	"mbstring":     []string{},
+	"mbstring":     []string{"libonig-dev"},
 	"mysqli":       []string{},
 	"pcntl":        []string{},
 	"pdo":          []string{},
@@ -229,8 +275,6 @@ var phpCoreExts = map[string][]string{
 	"pdo_sqlite":   []string{"libsqlite3-dev"},
 	"pgsql":        []string{"libpq-dev"},
 	"pspell":       []string{"libpspell-dev"},
-	"readline":     []string{"libedit-dev"},
-	"recode":       []string{"librecode-dev"},
 	"shmop":        []string{},
 	"snmp":         []string{"libsnmp-dev"},
 	"soap":         []string{"libxml2-dev"},
@@ -239,8 +283,6 @@ var phpCoreExts = map[string][]string{
 	"sysvsem":      []string{},
 	"sysvshm":      []string{},
 	"tidy":         []string{"libtidy-dev"},
-	"wddx":         []string{"libxml2-dev"},
-	"xmlrpc":       []string{"libxml2-dev"},
 	"xsl":          []string{"libxslt1-dev"},
 	"zip":          []string{"libzip-dev"},
 }
@@ -248,17 +290,22 @@ var phpCoreExts = map[string][]string{
 var phpPeclExts = map[string][]string{
 	"amqp":      []string{"librabbitmq-dev"},
 	"apcu":      []string{},
-	"geoip":     []string{"libgeoip-dev", "beta"},
 	"igbinary":  []string{},
 	"imagick":   []string{"libmagickwand-dev"},
 	"lzf":       []string{},
-	"mcrypt":    []string{"libmcrypt-dev", "snapshot"},
+	"mailparse": []string{},
+	"maxminddb": []string{"libmaxminddb-dev"},
+	"mcrypt":    []string{"libmcrypt-dev"},
 	"memcached": []string{"libmemcached-dev"},
 	"mongodb":   []string{},
 	"msgpack":   []string{},
 	"oauth":     []string{"libpcre3-dev"},
 	"protobuf":  []string{},
+	"psr":       []string{},
 	"rdkafka":   []string{"librdkafka-dev"},
 	"redis":     []string{},
+	"solr":      []string{"libcurl4-openssl-dev,libxml2-dev"},
+	"stomp":     []string{"libssl-dev"},
+	"yaf":       []string{},
 	"yaml":      []string{"libyaml-dev"},
 }

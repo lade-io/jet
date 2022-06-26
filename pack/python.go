@@ -23,8 +23,7 @@ func (p *PythonPack) Metadata() *Metadata {
 	user := "web"
 	meta := &Metadata{
 		Env: map[string]string{
-			"PATH":     "/home/" + user + "/.local/bin:$PATH",
-			"PIP_USER": "true",
+			"PATH": "/home/" + user + "/.local/bin:$PATH",
 		},
 		User: user,
 	}
@@ -43,13 +42,13 @@ func (p *PythonPack) Metadata() *Metadata {
 	case fileExists(p.WorkDir, "setup.py"):
 		meta.Tools = append(meta.Tools, &Tool{
 			Name:     "pip-compile",
-			Download: "pip install pip-tools",
+			Download: "pip install pip-tools==5.5.0",
 			Files:    []string{"setup.py"},
 			Install:  []string{"setup.py"},
 		})
 	case fileExists(p.WorkDir, "environment.yml"):
 		convert := []string{
-			"r environment.yml dependencies[*]",
+			"'.dependencies[]' environment.yml",
 			"sed 's/=/==/;/^python=/d' > requirements.txt",
 		}
 		meta.Tools = append(meta.Tools, &Tool{
@@ -97,7 +96,7 @@ func (p *PythonPack) Command() (string, error) {
 			matches := pyappRegex.FindStringSubmatch(line)
 			if len(matches) > 1 {
 				path = strings.TrimSuffix(path, filepath.Ext(path))
-				path = strings.Replace(path, "/", ".", -1)
+				path = strings.ReplaceAll(path, "/", ".")
 				return "gunicorn " + path + ":" + matches[1], nil
 			}
 		}

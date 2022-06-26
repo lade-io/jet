@@ -17,12 +17,12 @@ import (
 	"github.com/cloudingcity/gomod"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/client"
-	"github.com/google/go-github/v24/github"
+	"github.com/google/go-github/v45/github"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 	"github.com/hashicorp/go-version"
 	"golang.org/x/oauth2"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -190,12 +190,12 @@ func getTools(dir string, meta *Metadata) error {
 			}
 		}
 
-		copy, err := fileCopy(dir, tool.Files)
+		copyMap, err := fileCopy(dir, tool.Files)
 		if err != nil {
 			return err
 		}
 
-		tool.Copy = copy
+		tool.Copy = copyMap
 		if err = getDownload(tool); err != nil {
 			return err
 		}
@@ -263,12 +263,12 @@ func fileCopy(dir string, files []string) (map[string][]string, error) {
 		paths = append(paths, glob...)
 	}
 
-	copy := map[string][]string{}
+	copyMap := map[string][]string{}
 	for _, path := range paths {
 		dest := filepath.Dir(path)
-		copy[dest] = append(copy[dest], path)
+		copyMap[dest] = append(copyMap[dest], path)
 	}
-	return copy, nil
+	return copyMap, nil
 }
 
 func fileExists(dir, file string) bool {

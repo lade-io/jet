@@ -23,6 +23,7 @@ func (g *GoPack) Metadata() *Metadata {
 	}
 	switch {
 	case fileExists(g.WorkDir, "Gopkg.toml"):
+		meta.Env = map[string]string{"GO111MODULE": "off"}
 		meta.Tools = append(meta.Tools, &Tool{
 			Name:    "dep",
 			Owner:   "golang",
@@ -30,6 +31,7 @@ func (g *GoPack) Metadata() *Metadata {
 			Install: []string{"ensure -vendor-only"},
 		})
 	case fileExists(g.WorkDir, "glide.yaml"):
+		meta.Env = map[string]string{"GO111MODULE": "off"}
 		meta.Root = Root{
 			File: "glide.yaml",
 			Key:  "package",
@@ -41,6 +43,7 @@ func (g *GoPack) Metadata() *Metadata {
 			Install: []string{"install -v", "cache-clear"},
 		})
 	case fileExists(g.WorkDir, "Godeps/Godeps.json"):
+		meta.Env = map[string]string{"GO111MODULE": "off"}
 		meta.Root = Root{
 			File: "Godeps/Godeps.json",
 			Key:  "ImportPath",
@@ -63,6 +66,7 @@ func (g *GoPack) Metadata() *Metadata {
 			Install: []string{"download"},
 		})
 	case fileExists(g.WorkDir, "vendor/vendor.json"):
+		meta.Env = map[string]string{"GO111MODULE": "off"}
 		meta.Root = Root{
 			File: "vendor/vendor.json",
 			Key:  "rootPath",

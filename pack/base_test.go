@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/lade-io/jet/pack"
-	"github.com/ory/dockertest"
-	"github.com/ory/dockertest/docker"
+	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -87,17 +87,20 @@ func TestBuild(t *testing.T) {
 		require.NoError(t, err)
 
 		err = testPool.Retry(func() error {
-			container, err := testPool.Client.InspectContainer(resource.Container.ID)
+			var container *docker.Container
+			container, err = testPool.Client.InspectContainer(resource.Container.ID)
 			if err != nil {
 				return err
 			}
 			if !container.State.Running {
 				return errServer
 			}
-			resp, err := http.Get("http://localhost:" + resource.GetPort("3000/tcp"))
+			var resp *http.Response
+			resp, err = http.Get("http://localhost:" + resource.GetPort("3000/tcp"))
 			if err != nil {
 				return err
 			}
+			defer resp.Body.Close()
 			if resp.StatusCode == 200 || resp.StatusCode == 404 {
 				return nil
 			}

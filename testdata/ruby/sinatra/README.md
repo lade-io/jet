@@ -1,4 +1,4 @@
 sinatra web app
 ==================
 
-A service free app for buildpack testing
+A service free app for CF buildpack testing

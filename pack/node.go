@@ -115,7 +115,7 @@ func (n *NodePack) Version() (string, error) {
 			continue
 		}
 
-		node = strings.Replace(node, "~>", "~", -1)
+		node = strings.ReplaceAll(node, "~>", "~")
 		return node, nil
 	}
 	return "", nil

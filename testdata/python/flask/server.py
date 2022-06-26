@@ -1,6 +1,5 @@
 from flask import Flask, request
 import subprocess
-from regcore import settings
 
 app = Flask(__name__)
 
