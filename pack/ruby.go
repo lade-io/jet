@@ -44,25 +44,18 @@ func (r *RubyPack) Metadata() *Metadata {
 	}
 
 	if node {
-		meta.Packages = append(meta.Packages, "nodejs")
-		meta.Sources = append(meta.Sources, &Source{
-			Entry: "deb http://deb.nodesource.com/node_11.x stretch main",
-			Key:   "https://deb.nodesource.com/gpgkey/nodesource.gpg.key",
-			File:  "nodesource.list",
+		meta.Tools = append(meta.Tools, &Tool{
+			Name:  "node",
+			Owner: "nodejs",
 		})
 	}
 
 	if yarn {
-		meta.Packages = append(meta.Packages, "yarn")
-		meta.Sources = append(meta.Sources, &Source{
-			Entry: "deb http://dl.yarnpkg.com/debian/ stable main",
-			Key:   "https://dl.yarnpkg.com/debian/pubkey.gpg",
-			File:  "yarn.list",
-		})
 		meta.Tools = append(meta.Tools, &Tool{
-			Name:    "yarn",
-			Files:   []string{"package.json", "yarn.lock"},
-			Install: []string{"install"},
+			Name:     "yarn",
+			Download: "corepack enable",
+			Files:    []string{"package.json", "yarn.lock"},
+			Install:  []string{"install"},
 		})
 	}
 	return meta

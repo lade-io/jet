@@ -1,8 +1,6 @@
 # Jet
 
-![Jet mascot](jet-mascot.png)
-
-[![Build Status](https://img.shields.io/github/workflow/status/lade-io/jet/Release.svg)](https://github.com/lade-io/jet/actions/workflows/release.yml)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/lade-io/jet/release.yml)](https://github.com/lade-io/jet/actions/workflows/release.yml)
 [![Go.Dev Reference](https://img.shields.io/badge/go.dev-reference-blue.svg)](https://pkg.go.dev/github.com/lade-io/jet/pack)
 [![Release](https://img.shields.io/github/v/release/lade-io/jet.svg)](https://github.com/lade-io/jet/releases/latest)
 
@@ -72,6 +70,8 @@ Debug Node.js app:
 $ jet debug testdata/node/node12/
 FROM node:12
 
+ENV PATH=/home/node/app/node_modules/.bin:$PATH
+
 USER node
 RUN mkdir -p /home/node/app/
 WORKDIR /home/node/app/
@@ -88,10 +88,9 @@ Debug Python and Django app:
 
 ```console
 $ jet debug testdata/python/django/
-FROM python:3.5
+FROM python:3.9
 
 ENV PATH=/home/web/.local/bin:$PATH
-ENV PIP_USER=true
 
 RUN groupadd --gid 1000 web \
         && useradd --uid 1000 --gid web --shell /bin/bash --create-home web
@@ -112,17 +111,13 @@ Debug Ruby on Rails app:
 
 ```console
 $ jet debug testdata/ruby/rails5/
-FROM ruby:2.6.5
+FROM ruby:2.7.7
 
-RUN set -ex \
-        && echo "deb http://deb.nodesource.com/node_11.x stretch main" > /etc/apt/sources.list.d/nodesource.list \
-        && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - \
-        && echo "deb http://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
-        && curl -fsSL https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
-        && apt-get update && apt-get install -y \
-                nodejs \
-                yarn \
-        && rm -rf /var/lib/apt/lists/*
+RUN wget -qO node.tar.gz "https://nodejs.org/dist/v18.13.0/node-v18.13.0-linux-x64.tar.gz" \
+        && tar -xzf node.tar.gz -C /usr/local --strip-components=1 \
+        && rm node.tar.gz
+
+RUN corepack enable
 
 RUN groupadd --gid 1000 web \
         && useradd --uid 1000 --gid web --shell /bin/bash --create-home web
@@ -146,4 +141,3 @@ CMD ["sh", "-c", "puma -p ${PORT-3000}"]
 
 * Test cases imported from [Cloud Foundry Buildpacks](https://github.com/cloudfoundry-community/cf-docs-contrib/wiki/Buildpacks)
 licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
-* Graphic designed by brgfx on [Freepik](http://www.freepik.com)

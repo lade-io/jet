@@ -36,6 +36,11 @@ type cacheTransport struct {
 	rt     http.RoundTripper
 }
 
+type nodeVersion struct {
+	Version string      `json:"version"`
+	LTS     interface{} `json:"lts"`
+}
+
 func (c *cacheTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
 	req.Header.Set("Cache-Control", fmt.Sprintf("max-age=%d", c.maxAge))
 	resp, err = c.rt.RoundTrip(req)
@@ -43,6 +48,20 @@ func (c *cacheTransport) RoundTrip(req *http.Request) (resp *http.Response, err 
 		resp.Header.Set("Cache-Control", "no-cache")
 	}
 	return
+}
+
+func (n *nodeVersion) Download() string {
+	return fmt.Sprintf("https://nodejs.org/dist/%[1]s/node-%[1]s-linux-x64.tar.gz", n.Version)
+}
+
+func (n *nodeVersion) IsLTS() bool {
+	switch data := n.LTS.(type) {
+	case bool:
+		return data
+	case string:
+		return true
+	}
+	return false
 }
 
 func init() {
@@ -65,11 +84,23 @@ func init() {
 	}
 }
 
-func getDownload(tool *Tool) error {
+func getDownload(tool *Tool) (err error) {
 	name := tool.Name
 	owner := tool.Owner
 	if owner == "" {
 		return nil
+	}
+
+	defer func() {
+		if err == nil && tool.Download == "" {
+			err = fmt.Errorf("%s tool not found", name)
+		}
+	}()
+
+	if name == "node" {
+		tool.Archive = "/usr/local"
+		tool.Download, err = getNodeDownload()
+		return err
 	}
 
 	client := github.NewClient(httpClient)
@@ -88,17 +119,34 @@ func getDownload(tool *Tool) error {
 		if binary.MatchString(asset.GetName()) {
 			tool.Download = asset.GetBrowserDownloadURL()
 			if strings.HasSuffix(tool.Download, ".tar.gz") {
-				tool.Archive = true
+				tool.Archive = "/usr/local/bin"
 			} else {
 				tool.Binary = true
 			}
 			break
 		}
 	}
-	if tool.Download == "" {
-		return fmt.Errorf("%s tool not found", name)
-	}
 	return nil
+}
+
+func getNodeDownload() (string, error) {
+	resp, err := httpClient.Get("https://nodejs.org/dist/index.json")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var versions []nodeVersion
+	if err = json.NewDecoder(resp.Body).Decode(&versions); err != nil {
+		return "", err
+	}
+
+	for _, version := range versions {
+		if version.IsLTS() {
+			return version.Download(), nil
+		}
+	}
+	return "", nil
 }
 
 func getPath(dir string, meta *Metadata) error {
@@ -300,17 +348,15 @@ func fileRead(dir, file string) ([]byte, error) {
 const dockerString = `FROM {{.Name}}:{{.Version}}
 {{if .Packages}}
 RUN set -ex \
-{{range .Sources}}	&& echo "{{.Entry}}" > /etc/apt/sources.list.d/{{.File}} \
-	&& curl -fsSL {{.Key}} | apt-key add - \
-{{end}}	&& apt-get update && apt-get install -y \
+	&& apt-get update && apt-get install -y \
 {{range .Packages}}		{{.}} \
 {{end}}	&& rm -rf /var/lib/apt/lists/*
 {{end}}{{range .Tools}}{{if .Download}}{{if .Archive}}
-RUN wget -O {{.Name}}.tar.gz "{{.Download}}" \
-	&& tar -xzf {{.Name}}.tar.gz -C /usr/local/bin --strip-components=1 \
+RUN wget -qO {{.Name}}.tar.gz "{{.Download}}" \
+	&& tar -xzf {{.Name}}.tar.gz -C {{.Archive}} --strip-components=1 \
 	&& rm {{.Name}}.tar.gz
 {{else if .Binary}}
-RUN wget -O {{.Name}} "{{.Download}}" \
+RUN wget -qO {{.Name}} "{{.Download}}" \
 	&& chmod +x {{.Name}} && mv {{.Name}} /usr/local/bin
 {{else}}
 RUN {{.Download}}
@@ -327,12 +373,12 @@ RUN groupadd --gid 1000 {{.User}} \
 USER {{.User}}
 RUN mkdir -p {{.Path}}
 WORKDIR {{.Path}}
-{{range $t := .Tools}}{{range $dir, $files := .Copy}}
+{{range $t := .Tools}}{{if or .Copy .Install}}{{range $dir, $files := .Copy}}
 COPY {{if $.User}}--chown={{$.User}}:{{$.User}} {{end}}
 {{- range $files}}{{.}} {{end}}{{$dir}}/{{end}}{{if .Install}}
 RUN {{range $i, $e := .Install}}{{if $i}} \
 	&& {{end}}{{if $t.Name}}{{$t.Name}} {{end}}{{$e}}{{end}}{{end}}
-{{end}}{{if .Process}}
+{{end}}{{end}}{{if .Process}}
 CMD [{{range $i, $e := .Process}}{{if $i}}, {{end}}"{{$e}}"{{end}}]
 {{end -}}
 `

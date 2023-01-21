@@ -16,16 +16,14 @@ func (n *NodePack) Detect() bool {
 }
 
 func (n *NodePack) Metadata() *Metadata {
+	user := "node"
 	meta := &Metadata{
-		User: "node",
+		Env: map[string]string{
+			"PATH": "/home/" + user + "/app/node_modules/.bin:$PATH",
+		},
+		User: user,
 	}
 	if fileExists(n.WorkDir, "yarn.lock") {
-		meta.Packages = append(meta.Packages, "yarn")
-		meta.Sources = append(meta.Sources, &Source{
-			Entry: "deb http://dl.yarnpkg.com/debian/ stable main",
-			Key:   "https://dl.yarnpkg.com/debian/pubkey.gpg",
-			File:  "yarn.list",
-		})
 		meta.Tools = append(meta.Tools, &Tool{
 			Name:    "yarn",
 			Files:   []string{"**/package.json", "yarn.lock"},

@@ -35,7 +35,6 @@ type Metadata struct {
 	Path     string
 	Process  []string
 	Root     Root
-	Sources  []*Source
 	Tools    []*Tool
 	User     string
 	Variant  string
@@ -53,17 +52,11 @@ type Root struct {
 	Key  string
 }
 
-type Source struct {
-	Entry string
-	File  string
-	Key   string
-}
-
 type Tool struct {
 	Copy     map[string][]string
 	Name     string
 	Owner    string
-	Archive  bool
+	Archive  string
 	Binary   bool
 	Download string
 	Files    []string

@@ -42,8 +42,8 @@ func (p *PythonPack) Metadata() *Metadata {
 	case fileExists(p.WorkDir, "setup.py"):
 		meta.Tools = append(meta.Tools, &Tool{
 			Name:     "pip-compile",
-			Download: "pip install pip-tools==5.5.0",
-			Files:    []string{"setup.py"},
+			Download: "pip install pip-tools",
+			Files:    []string{"."},
 			Install:  []string{"setup.py"},
 		})
 	case fileExists(p.WorkDir, "environment.yml"):

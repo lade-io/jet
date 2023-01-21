@@ -1,6 +1,6 @@
 {
     "require": {
-        "php": ">=7.2",
+        "php": "~8.1",
         "ext-amqp": "*",
         "ext-apcu": "*",
         "ext-bz2": "*",
