@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aquasecurity/go-version/pkg/version"
 	"github.com/bmatcuk/doublestar"
 	"github.com/cloudingcity/gomod"
 	"github.com/docker/distribution/reference"
@@ -20,7 +21,6 @@ import (
 	"github.com/google/go-github/v45/github"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
-	"github.com/hashicorp/go-version"
 	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
 )
@@ -259,8 +259,8 @@ func getVersion(meta *Metadata) error {
 
 	versions := []string{}
 	for _, tag := range tags {
-		var v *version.Version
-		v, err = version.NewVersion(tag)
+		var v version.Version
+		v, err = version.Parse(tag)
 		if err != nil || v.Prerelease() != meta.Variant {
 			continue
 		}
@@ -268,31 +268,22 @@ func getVersion(meta *Metadata) error {
 	}
 
 	sort.Slice(versions, func(i, j int) bool {
-		v1, _ := version.NewVersion(versions[i])
-		v2, _ := version.NewVersion(versions[j])
+		v1, _ := version.Parse(versions[i])
+		v2, _ := version.Parse(versions[j])
 		if v1.Equal(v2) {
 			return versions[i] > versions[j]
 		}
 		return v1.GreaterThan(v2)
 	})
 
-	meta.Version = strings.TrimRight(meta.Version, ".x*")
-	if meta.Version == "" {
-		meta.Version = ">0"
-	}
-
-	constraints, err := version.NewConstraint(meta.Version)
+	constraints, err := version.NewConstraints(meta.Version)
 	if err != nil {
 		return err
 	}
 
 	for _, tag := range versions {
 		ver := strings.Split(tag, "-")[0]
-		if meta.Version < ver {
-			continue
-		}
-
-		v, _ := version.NewVersion(ver)
+		v, _ := version.Parse(ver)
 		if constraints.Check(v) {
 			meta.Version = tag
 			return nil

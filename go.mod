@@ -4,13 +4,13 @@ go 1.18
 
 require (
 	github.com/ake-persson/mapslice-json v0.0.0-20210720081907-22c8edf57807
+	github.com/aquasecurity/go-version v0.0.0-20210121072130-637058cfe492
 	github.com/bmatcuk/doublestar v1.3.4
 	github.com/cloudingcity/gomod v1.0.1
 	github.com/docker/distribution v2.8.1+incompatible
 	github.com/docker/libcompose v0.4.1-0.20181019154650-213509acef0f
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc
-	github.com/hashicorp/go-version v1.2.0
 	github.com/ory/dockertest/v3 v3.6.5
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.0
@@ -84,6 +84,6 @@ require (
 
 replace (
 	github.com/Nvveen/Gotty => github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
+	github.com/aquasecurity/go-version => github.com/beornf/goversion v0.0.0-20230212045613-eac47a9c209d
 	github.com/docker/libcompose => github.com/beornf/libcompose v0.4.1-0.20210215180846-a59802c0f07c
-	github.com/hashicorp/go-version => github.com/beornf/go-version v1.1.1-0.20200317142312-136b0131ea06
 )

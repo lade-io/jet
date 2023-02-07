@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/hashicorp/go-version"
+	"github.com/aquasecurity/go-version/pkg/version"
 )
 
 type NodePack struct {
@@ -39,12 +39,12 @@ func (n *NodePack) Metadata() *Metadata {
 					return nil
 				}
 
-				constraints, err := version.NewConstraint("^8.12 || >=10.3")
+				constraints, err := version.NewConstraints("^8.12 || >=10.3")
 				if err != nil {
 					return err
 				}
 
-				v, _ := version.NewVersion(meta.Version)
+				v, _ := version.Parse(meta.Version)
 				if constraints.Check(v) {
 					tool.Install = []string{"ci"}
 				}
