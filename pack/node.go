@@ -23,6 +23,7 @@ func (n *NodePack) Metadata() *Metadata {
 		},
 		User: user,
 	}
+
 	if fileExists(n.WorkDir, "yarn.lock") {
 		meta.Tools = append(meta.Tools, &Tool{
 			Name:    "yarn",
@@ -51,6 +52,11 @@ func (n *NodePack) Metadata() *Metadata {
 				return nil
 			},
 		})
+	}
+
+	scripts := n.scripts()
+	if scripts["build"] {
+		meta.Install = append(meta.Install, meta.Tools[0].Name+" run build")
 	}
 	return meta
 }
@@ -117,4 +123,29 @@ func (n *NodePack) Version() (string, error) {
 		return node, nil
 	}
 	return "", nil
+}
+
+func (n *NodePack) scripts() map[string]bool {
+	b, err := fileRead(n.WorkDir, "package.json")
+	if err != nil {
+		return nil
+	}
+
+	conf := map[string]interface{}{}
+	if err = json.Unmarshal(b, &conf); err != nil {
+		return nil
+	}
+
+	scripts, ok := conf["scripts"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	scriptMap := map[string]bool{}
+	for key, value := range scripts {
+		if _, ok := value.(string); ok {
+			scriptMap[key] = true
+		}
+	}
+	return scriptMap
 }
