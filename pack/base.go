@@ -12,9 +12,14 @@ import (
 	"regexp"
 	"text/template"
 
+	"github.com/docker/docker/api"
 	"github.com/docker/libcompose/docker/builder"
 	"github.com/docker/libcompose/docker/client"
 	"github.com/docker/libcompose/logger"
+)
+
+var (
+	ErrNoBuildpack = errors.New("No known buildpacks support this app")
 )
 
 type Pack interface {
@@ -97,7 +102,7 @@ func Detect(workDir string) (pack *Buildpack, err error) {
 	}
 
 	if len(detected) < 1 {
-		return nil, errors.New("No known buildpacks support this app")
+		return nil, ErrNoBuildpack
 	}
 
 	pack = detected[0]
@@ -129,6 +134,7 @@ func (b *Buildpack) BuildImage(name string) (string, error) {
 		return "", err
 	}
 
+	os.Setenv("DOCKER_API_VERSION", api.DefaultVersion)
 	imageClient, err := client.Create(client.Options{})
 	if err != nil {
 		return "", err

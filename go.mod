@@ -1,6 +1,6 @@
 module github.com/lade-io/jet
 
-go 1.18
+go 1.22.0
 
 require (
 	github.com/ake-persson/mapslice-json v0.0.0-20210720081907-22c8edf57807
@@ -8,6 +8,7 @@ require (
 	github.com/bmatcuk/doublestar v1.3.4
 	github.com/cloudingcity/gomod v1.0.1
 	github.com/docker/distribution v2.8.1+incompatible
+	github.com/docker/docker v20.10.7+incompatible
 	github.com/docker/libcompose v0.4.1-0.20181019154650-213509acef0f
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc
@@ -31,7 +32,6 @@ require (
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v20.10.7+incompatible // indirect
-	github.com/docker/docker v20.10.7+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
@@ -74,7 +74,7 @@ require (
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a // indirect
 	google.golang.org/grpc v1.38.0 // indirect
@@ -84,6 +84,6 @@ require (
 
 replace (
 	github.com/Nvveen/Gotty => github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
-	github.com/aquasecurity/go-version => github.com/beornf/goversion v0.0.0-20230212045613-eac47a9c209d
+	github.com/aquasecurity/go-version => github.com/beornf/goversion v0.0.0-20241022080423-63c828623ebb
 	github.com/docker/libcompose => github.com/beornf/libcompose v0.4.1-0.20210215180846-a59802c0f07c
 )

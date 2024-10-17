@@ -131,6 +131,6 @@ func (r *RubyPack) version() (string, string, string) {
 }
 
 var (
-	specRegex = regexp.MustCompile(`^\s+([-\w]+)\s\(([.\d]+)\)`)
+	specRegex = regexp.MustCompile(`^\s+([\w-]+)\s\(([\w-.]+)\)`)
 	rubyRegex = regexp.MustCompile(`['"]?([a-z_]+)['"]?[:=>\s]*['"]([a-z]*[^a-z]*\w)['"]`)
 )

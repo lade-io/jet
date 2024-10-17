@@ -93,8 +93,7 @@ func (p *PhpPack) Command() (string, error) {
 
 func (p *PhpPack) Version() (string, error) {
 	requires := p.requires()
-	version := phpPipe.Split(requires["php"], -1)
-	return strings.Join(version, "||"), nil
+	return phpPipe.ReplaceAllString(requires["php"], "||"), nil
 }
 
 func (p *PhpPack) extensions() ([]string, []string, []string, []string, []string) {
@@ -163,7 +162,7 @@ func composerRequire(name string, pkgs map[string]mapslice.MapSlice, requires ma
 			requires[key] = value
 			composerRequire(key, pkgs, requires)
 		} else if !strings.Contains(version, value) {
-			requires[key] = version + "," + value
+			requires[key] = version + " && " + value
 		}
 	}
 }

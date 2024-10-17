@@ -276,18 +276,26 @@ func getVersion(meta *Metadata) error {
 		return v1.GreaterThan(v2)
 	})
 
-	constraints, err := version.NewConstraints(meta.Version)
-	if err != nil {
-		return err
+	constraints := []version.Constraints{}
+	for _, v := range strings.Split(meta.Version, "&&") {
+		c, err := version.NewConstraints(v)
+		if err != nil {
+			return err
+		}
+		constraints = append(constraints, c)
 	}
 
+versionLoop:
 	for _, tag := range versions {
 		ver := strings.Split(tag, "-")[0]
 		v, _ := version.Parse(ver)
-		if constraints.Check(v) {
-			meta.Version = tag
-			return nil
+		for _, c := range constraints {
+			if !c.Check(v) {
+				continue versionLoop
+			}
 		}
+		meta.Version = tag
+		return nil
 	}
 	return fmt.Errorf("Unknown %s version %s", meta.Name, meta.Version)
 }
