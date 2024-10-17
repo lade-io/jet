@@ -8,6 +8,7 @@ require (
 	github.com/bmatcuk/doublestar v1.3.4
 	github.com/cloudingcity/gomod v1.0.1
 	github.com/docker/distribution v2.8.1+incompatible
+	github.com/docker/docker v20.10.7+incompatible
 	github.com/docker/libcompose v0.4.1-0.20181019154650-213509acef0f
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gregjones/httpcache v0.0.0-20190212212710-3befbb6ad0cc
@@ -31,7 +32,6 @@ require (
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v20.10.7+incompatible // indirect
-	github.com/docker/docker v20.10.7+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.3 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
